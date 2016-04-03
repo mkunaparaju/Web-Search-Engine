@@ -195,70 +195,215 @@ private final String DISALLOW = "Disallow:";
 		}
 	
 	}
-	public int scoring(File file, Element link, URL url)
+	public int scoring(File file, Element link, URL parenturl) throws IOException
 	{
 		
-		return 0;
+		if (query == null){
+			return 0;
+		}
+
+		//substring
+		String anchor = link.text().toLowerCase();
+		//String[] queryTerms = query.split(" ");
+		int K = 0;
+		for (String q : query){
+			if(anchor.contains(q.toLowerCase())){
+				K++;
+			}
+		}
+		if (K > 0){
+			return (K * 50);
+		}
+
+		//substring
+		String url = link.attr("href").toLowerCase();
+		K = 0;
+		for (String q : query){
+			if(url.contains(q.toLowerCase())){
+				return 40;
+			}
+		}
+		
+		int U = 0;
+		int V = 0;
+		List<String> neighborWords = new ArrayList<String>();
+
+		List<String> words = getPrev(link.previousSibling());
+		if (words != null){
+			neighborWords.addAll(words);
+		}
+
+		words = getNext(link.nextSibling());
+		if (words != null){
+			neighborWords.addAll(words);
+		}
+
+		for(String q: query){
+			if(neighborWords.contains(q.toLowerCase())){
+				U++;
+			}
+		}
+
+		Document doc = Jsoup.parse(file, "UTF-8", parenturl.toString());
+		String rawText = doc.text();
+		String[] raw = rawText.split(" ");
+		List<String> rawTextList = new ArrayList<String>();
+		for (String s : raw){
+			if (!s.matches("^[a-zA-Z0-9]+$")){
+				s = s.replaceAll("[^\\p{Alpha}\\p{Digit}]+","");
+			}
+			rawTextList.add(s.toLowerCase());
+		}
+		for(String q: query){
+
+			if(rawTextList.contains(q.toLowerCase())){
+				V++;
+			}
+		}
+
+		int score = 4*U + Math.abs(V-U);
+		return score;
+
+
+	}
+	
+	public List<String> getNext(Node nextSib){
+		if (nextSib == null){
+			return null;
+		}
+
+		String data;
+		StringBuilder sb = new StringBuilder();
+		String[] neighbors;
+		List<String> retList = new ArrayList<String>();
+		int count = 0;
+		while (count < 5){
+			data = getData(nextSib);
+			if(data == null){
+				break;
+			}
+			neighbors = data.split(" ");
+			for (String s : neighbors){
+				if (count == 5){
+					break;
+				}
+				if(s.matches("^\\W+$") || (s.matches("\\z"))){
+					continue;
+				}
+				if(!s.matches("^[a-zA-Z0-9]+$")){
+					s = s.replaceAll("[^\\p{Alpha}\\p{Digit}]+","");
+				}
+				sb.append(s.toLowerCase());
+				count++;
+				sb.append(" ");
+			}
+			nextSib = nextSib.nextSibling();
+		}
+		for (String s : sb.toString().split(" ")){
+			retList.add(s);
+		}
+		return retList;
+	}
+
+	public List<String> getPrev(Node prevSib){
+		if (prevSib == null){
+			return null;
+		}
+
+		String data;
+		StringBuilder sb = new StringBuilder();
+		String[] neighbors;
+		List<String> retList = new ArrayList<String>();
+		int count = 0;
+		while (count < 5){
+			data = getData(prevSib);
+			if (data == null){
+				break;
+			}
+			neighbors = data.split(" ");
+			for (int i = neighbors.length - 1 ; i >= 0; i--){
+				if (count == 5){
+					break;
+				}
+				String word = neighbors[i];
+				if(word.matches("^\\W+$") || word.matches("\\z")){
+					continue;
+				}
+				if(!word.matches("^[a-zA-Z0-9]+$")){
+					word = word.replaceAll("[^\\p{Alpha}\\p{Digit}]+","");
+				}
+				sb.append(word.toLowerCase());
+				count++;
+				sb.append(" ");
+			}
+			prevSib = prevSib.previousSibling();
+		}
+		for (String s : sb.toString().split(" ")){
+			retList.add(s);
+		}
+		return retList;
+	}
+
+	public String getData(Node node){
+		if (node == null){
+			return null;
+		}
+		if (node instanceof TextNode){
+			return ((TextNode)node).text();
+		}
+		return ((Element)node).text();
 	}
 	
 	public boolean isRobotSafe(URL url) throws IOException
 	{
-	    String strHost = url.getHost();
-
+		String strHost = url.getHost();
 		// form URL of the robots.txt file
-	    String strRobot = "http://" + strHost + "/robots.txt";
-	    URL urlRobot;
-	    try { urlRobot = new URL(strRobot);
+		String strRobot = "https://" + strHost + "/robots.txt";
+		URL urlRobot;
+		try { urlRobot = new URL(strRobot);
 		} catch (MalformedURLException e) {
-		    // something weird is happening, so don't trust it
-		    return false;
+			// something weird is happening, so don't trust it
+			return false;
 		}
-
-	    if (debug) System.out.println("Checking robot protocol " + 
-	                                   urlRobot.toString());
-	    String strCommands;
-	    try {
-	       InputStream urlRobotStream = urlRobot.openStream();
-
-		    // read in entire file
-	       byte b[] = new byte[1000];
-	       int numRead = urlRobotStream.read(b);
-	       strCommands = new String(b, 0, numRead);
-	       while (numRead != -1) {
-	          numRead = urlRobotStream.read(b);
-	          if (numRead != -1) {
-	             String newCommands = new String(b, 0, numRead);
-		         strCommands += newCommands;
-			}
-		    }
-	       urlRobotStream.close();
+		// reading the robots.txt
+		String strCommands = null;
+		String inputLine;
+		BufferedReader br;
+		try {
+			URLConnection uConn = urlRobot.openConnection();
+			br = new BufferedReader(
+					new InputStreamReader(uConn.getInputStream()));
 		} catch (IOException e) {
-		    // if there is no robots.txt file, it is OK to search
-		    return true;
+			// if there is no robots.txt file, it is OK to search
+			return true;
 		}
-	        if (debug) System.out.println(strCommands);
+
+		while ((inputLine = br.readLine()) != null) {
+			strCommands += inputLine;
+		}
 
 		// assume that this robots.txt refers to us and 
 		// search for "Disallow:" commands.
 		String strURL = url.getFile();
 		int index = 0;
-		while ((index = strCommands.indexOf(DISALLOW, index)) != -1) {
-		    index += DISALLOW.length();
-		    String strPath = strCommands.substring(index);
-		    StringTokenizer st = new StringTokenizer(strPath);
+		int reqAgentIndex = strCommands.indexOf(AGENT);
+		int nextAgentIndex = strCommands.indexOf("User-agent", reqAgentIndex);
+		while ((index != -1) && (index < nextAgentIndex)){
+			index = strCommands.indexOf(DISALLOW, reqAgentIndex);
+			index += DISALLOW.length();
+			String strPath = strCommands.substring(index);
+			StringTokenizer st = new StringTokenizer(strPath);
 
-		    if (!st.hasMoreTokens())
-			break;
-		    
-		    String strBadPath = st.nextToken();
+			if (!st.hasMoreTokens())
+				break;
 
-		    // if the URL starts with a disallowed path, it is not safe
-		    if (strURL.indexOf(strBadPath) == 0)
-			return false;
+			String strBadPath = st.nextToken();
+
+			// if the URL starts with a disallowed path, it is not safe
+			if (strURL.indexOf(strBadPath) == 0)
+				return false;
 		}
-
 		return true;
-		
 	}
 
 	public static void main(String[] args) throws IOException
