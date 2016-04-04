@@ -6,7 +6,7 @@ import com.beust.jcommander.Parameter;
 import java.io.*;
 import java.net.*;
 import java.util.*;
-
+import java.util.Comparator;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -37,6 +37,8 @@ private final String DISALLOW = "Disallow:";
 	private PriorityQueue<Link> urlQueue;
 	private int downloadedPages;
 	
+
+	
 	public void initialize(String [] args)
 	{
 		downloadedPages = 0;
@@ -50,7 +52,7 @@ private final String DISALLOW = "Disallow:";
 			link = new Link(url);
 			seenURL.put(url, link);
 			urlQueue.add(link);
-			System.out.println("Starting search: Initial URL " + url.toString()); 
+			//System.out.println("Starting search: Initial URL " + url.toString()); 
 		}
 		catch (MalformedURLException e) 
 		{
@@ -62,28 +64,46 @@ private final String DISALLOW = "Disallow:";
 	
 	public void run(String [] args) throws IOException
 	{
+		System.out.println("Crawling for " + maxPages+ " pages relevant to " + query + " starting from " + startingUrl );
+		System.out.println ("\n");
 		initialize(args);
+		
+//		try{
+//			URL url = new URL(startingUrl);
+//			Link newLink = new Link(url);
+//			seenURL.put(url, newLink);
+//			urlQueue.add(newLink);
+//		}
+//		catch(MalformedURLException e){
+//			System.out.println("Invalid starting URL " + args[1]);
+//		}
+//		
 		while((urlQueue.size() != 0) && (downloadedPages < MAX_PAGES)) 
 		{
 			Link newLink = urlQueue.poll();
 			URL newURL = newLink.getURL();			
 			
-			if(isRobotSafe(newURL))
+			if(!isRobotSafe(newURL))
 			{
-				if(debug) System.out.println("Downloading the page : "+ newURL);
+				break;
+			}
+				
+				if(debug) System.out.println("Downloading : "+ newURL + " . score = " + newLink.getScore());
 				String content = getPage(newLink, MAXSIZE);
 				String filename = docs + "/"+ newURL.getHost() + newURL.getPath();
 				
 				//System.out.println(filename);
 				boolean success = savePage(docs + "/"+ newURL.getHost() + newURL.getPath(),content);
+				if(debug) System.out.println("Received : " + newURL);
+				
 				downloadedPages++;
 				
-				if(success) System.out.println("Downloaded to file : " + newURL);
+				//if(success) System.out.println("Downloading : " + newURL + " . score = " + newLink.getScore());
 				
 				if (downloadedPages >= maxPages) break; 
 				//check if by giving the whole file name the file will open or not
 				if (content.length() != 0) processPage(filename,newURL);	
-			}		
+					
 		}
 	}
 	
@@ -145,12 +165,10 @@ private final String DISALLOW = "Disallow:";
 	public void processPage(String filename, URL parentURL) throws IOException
 	{
 		File file = new File(filename);
-		Document doc = Jsoup.parse(file,"UTF-8", parentURL.toString());
+		Document doc = Jsoup.parse(file,"UTF-8",parentURL.toString());
 		Elements links = doc.select("a[href]");
-		
 		for (Element link : links) 
 		{
-			
 			String linkHref = link.attr("href");
 			String anchor = link.text();
 
@@ -158,15 +176,16 @@ private final String DISALLOW = "Disallow:";
 			Link newLink = new Link(childUrl);
 			newLink.setAnchor(anchor);
 			int score = scoring(file,link,parentURL);
-			if (downloadedPages == maxPages)
-			{
+			if (downloadedPages == maxPages){
 				break;
-			}
+			}			
+			addnewurl(newLink, childUrl,anchor, score);
 			
-				addnewurl(newLink, childUrl,anchor, score);
 		}
+		System.out.println("\n");
+}
 		
-	}
+	
 	
 	public void addnewurl(Link newLink, URL childUrl, String anchor, int score)
 	{
@@ -423,12 +442,19 @@ class Link {
 	URL url;
 	int score;
 	String anchor;
+	int id =0;
+	static int counter =0;
 	
 	Link(URL url)
 	{
 		this.url  = url;
 		score =0;
 		anchor = "";
+		this.id = ++counter;
+	}
+	
+	public int getId(){
+		return this.id;
 	}
 	
 	public URL getURL()
@@ -457,15 +483,38 @@ class Link {
 	{
 		this.anchor = anchor;
 	}
-}
+	
+	
+	
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((url == null) ? 0 : url.hashCode());
+		return result;
+	}
 
-
-
-class ScoreComparator implements Comparator<Link>
-{
-	public int compare(Link link1, Link link2)
-	{
-		
-		return 0;
+	/* (non-Javadoc)
+	 * @see java.lang.Object#equals(java.lang.Object)
+	 */
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		Link other = (Link) obj;
+		if (url == null) {
+			if (other.url != null)
+				return false;
+		} else if (!url.equals(other.url))
+			return false;
+		return true;
 	}
 }
+
+
+
+
