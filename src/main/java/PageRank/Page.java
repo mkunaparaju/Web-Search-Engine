@@ -17,7 +17,8 @@ public class Page {
 	private String text;
 	private static int counter;
 	private int id;
-	private Map<String, Integer> outlinks = new HashMap<String, Integer>();
+	//private Map<String, Integer> outlinks = new HashMap<String, Integer>();
+	private Map<String, Integer> outlinks = new LinkedHashMap<String, Integer>();
 	
 	public Page(File file) throws IOException
 	{
