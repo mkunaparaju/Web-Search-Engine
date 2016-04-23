@@ -108,20 +108,46 @@ public class PageRank {
 					 Page q = pageMap.get((String)outlink.getKey());
 					 int Q = q.getId() -1;
 					 normalizedWeight[Q][P] = weight[Q][P]/sumWeight;
-					 System.out.print(p.getTitle() + " --> " + q.getTitle() + "    " + weight[Q][P] + "        " + normalizedWeight[Q][P] + "\n") ;
-//					 System.out.println("    " + weight[Q][P] + " \n");
-					 
+					 System.out.print(p.getTitle() + " --> " + q.getTitle() + "    " + weight[Q][P] + "        " + normalizedWeight[Q][P] + "\n") ;				 
 				}							
 			}
-			
-			
 		}
 	}
 	
 	public void calcNewScore()
 	{
-		
-	}
+		boolean changed = true;
+		while(changed)
+		{
+			for (Page page : pageList)
+			{
+				int P = page.getId() - 1;
+				double normalizedScore = 0.0;
+				
+				for (Page qPage : pageList)
+					
+				{
+					int Q  = qPage.getId() - 1 ;
+			        normalizedScore += (qPage.getScore() * normalizedWeight[P][Q]);          
+				}
+			        double newScore = ((1.0 - fValue) * page.getBase()) + (fValue * normalizedScore);
+			        page.setNewScore(newScore);
+
+			          if(Math.abs(page.getNewScore() - page.getScore()) > epsilon) 
+			          {
+			            changed = true;
+			          }
+			          else
+			          {
+			        	  changed = false;
+			          }
+				}
+			        for(Page page : pageList) 
+			        {
+			        	page.setScore(page.getNewScore());
+			        }
+			} //while
+		}
 	
 	public static void main(String[] args) throws IOException {
 		// TODO Auto-generated method stub
@@ -130,6 +156,7 @@ public class PageRank {
 		pr.init();
 		//pr.setScores(files);
 		pr.calculateLinkWeight();
+		pr.calcNewScore();
 	}
 
 }
