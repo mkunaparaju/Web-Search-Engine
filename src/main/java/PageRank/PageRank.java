@@ -22,6 +22,7 @@ public class PageRank {
 	private List<Page> pageList = new ArrayList<Page>();
 	private Map<String, Page> pageMap = new HashMap<String, Page>();
 	private double weight [][] ; 
+	private double normalizedWeight [][];
 	
 	public void init()throws IOException
 	{
@@ -31,6 +32,7 @@ public class PageRank {
 		System.out.println("NNumber of files " + numOfFiles);
 		epsilon = 0.01/numOfFiles;
 		weight = new double[numOfFiles][numOfFiles];
+		normalizedWeight = new double[numOfFiles][numOfFiles];
 		setScores(files);
 //		calculateLinkWeight();
 		
@@ -76,6 +78,8 @@ public class PageRank {
 			{
 				Map<String, Integer> outboundlinks = p.getOutlinks();  
 				Iterator entries = outboundlinks.entrySet().iterator();
+				
+				
 				while(entries.hasNext())
 				{
 					 Entry outlink = (Entry) entries.next();
@@ -84,8 +88,8 @@ public class PageRank {
 					 int calcWeight = (Integer)outlink.getValue();
 					 //System.out.println("calculated Weight " + calcWeight);
 					 weight[Q][P]= calcWeight;
-					 System.out.print(p.getTitle() + " --> " + q.getTitle() + "    " + weight[Q][P]);
-					 System.out.println("\n");
+					 //System.out.print(p.getTitle() + " --> " + q.getTitle() + "    " + weight[Q][P]);
+					// System.out.println("\n");
 				}
 				
 				
@@ -95,15 +99,18 @@ public class PageRank {
 					sumWeight = sumWeight + weight[i][P];
 				
 				}
-				Map<String, Integer> outboundlinks1 = p.getOutlinks();  
-				Iterator entries1 = outboundlinks1.entrySet().iterator();
-				while(entries1.hasNext())
+				
+				entries = outboundlinks.entrySet().iterator();
+				
+				while(entries.hasNext())
 				{
 					 Entry outlink = (Entry) entries.next();
 					 Page q = pageMap.get((String)outlink.getKey());
-					 int Q = q.getId();
-					 weight[Q][P] = weight[Q][P]/sumWeight;
-					 System.out.println("    " + weight[Q][P]);
+					 int Q = q.getId() -1;
+					 normalizedWeight[Q][P] = weight[Q][P]/sumWeight;
+					 System.out.print(p.getTitle() + " --> " + q.getTitle() + "    " + weight[Q][P] + "        " + normalizedWeight[Q][P] + "\n") ;
+//					 System.out.println("    " + weight[Q][P] + " \n");
+					 
 				}							
 			}
 			
