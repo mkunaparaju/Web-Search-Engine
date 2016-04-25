@@ -1,4 +1,4 @@
-The Crawler can be found at: src\main\java\Crawler
+The PageRank can be found at: src\main\java\PageRank
 
 I have used an external dependency Jcommander for parsing the input arguments. this needs to be imported to compile my code and a html parser JSoup.  
 
@@ -10,8 +10,8 @@ Instructions for running the project:
 gradle build
 -- this will build the whole project
 
-gradle crawlerjar
+gradle PageRank
 --create the jar file for the crawler
 
-java -jar crawler.jar -u http://cs.nyu.edu/courses/spring16/CSCI-GA.2580-001/MarineMammal/PolarBear.html -q ocean -docs "<URL>" -m 7 -t
+java -jar PageRank.jar -docs PageRankFiles -f 0.1
 -- the arguments from -u onwards are customizable. 
